@@ -66,6 +66,7 @@ function formatDate(iso: string | null): string {
 }
 
 interface KeyFormData {
+  scriptId: number | null;
   keyName: string;
   providerId: string;
   serviceId: string;
@@ -84,6 +85,7 @@ interface KeyFormData {
 }
 
 const DEFAULT_FORM: KeyFormData = {
+  scriptId: null,
   keyName: "",
   providerId: "",
   serviceId: "",
@@ -101,14 +103,24 @@ const DEFAULT_FORM: KeyFormData = {
   useCustom: false,
 };
 
+interface ScriptOption { id: number; name: string; scriptKey: string | null; obfuscatedCode: string | null; }
+
 function CreateKeyDialog({ open, onOpenChange, onSave }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSave: (data: KeyFormData) => void;
 }) {
   const [form, setForm] = useState<KeyFormData>(DEFAULT_FORM);
+  const [scripts, setScripts] = useState<ScriptOption[]>([]);
   const { providers } = useProviders();
   const { services } = useServices();
+
+  useEffect(() => {
+    fetch("/api/scripts")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: ScriptOption[]) => setScripts(data))
+      .catch(() => {});
+  }, []);
 
   function patch<K extends keyof KeyFormData>(k: K, v: KeyFormData[K]) {
     setForm((p) => ({ ...p, [k]: v }));
@@ -123,6 +135,9 @@ function CreateKeyDialog({ open, onOpenChange, onSave }: {
     onSave(form);
     handleOpenChange(false);
   }
+
+  const selectedScript = scripts.find((s) => s.id === form.scriptId);
+  const scriptReady = selectedScript && selectedScript.scriptKey && selectedScript.obfuscatedCode;
 
   function getValidityMinutes(): number {
     if (form.permanent) return 0;
@@ -146,6 +161,36 @@ function CreateKeyDialog({ open, onOpenChange, onSave }: {
         </DialogHeader>
 
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
+          {/* Script — required for Roblox key verification */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Script <span className="text-red-400">*</span></Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="w-full flex items-center justify-between px-3 py-2 rounded-md border border-white/10 bg-black/60 text-sm text-left hover:border-white/20 transition-colors">
+                  {form.scriptId
+                    ? (selectedScript?.name ?? "Unknown")
+                    : <span className="text-muted-foreground">Select script</span>}
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                {scripts.length === 0
+                  ? <DropdownMenuItem disabled>No scripts yet</DropdownMenuItem>
+                  : scripts.map((s) => (
+                    <DropdownMenuItem key={s.id} onClick={() => patch("scriptId", s.id)}>
+                      <span className="flex-1 truncate">{s.name}</span>
+                      {!s.obfuscatedCode && <span className="text-[10px] text-amber-400/70 ml-2 shrink-0">needs key gen</span>}
+                    </DropdownMenuItem>
+                  ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {form.scriptId && !scriptReady && (
+              <p className="text-[10px] text-amber-400">
+                ⚠ This script hasn't had a key generated yet. Go to Scripts and click "Generate Key" first.
+              </p>
+            )}
+          </div>
+
           {/* Provider */}
           <div className="space-y-1.5">
             <Label className="text-xs">Provider</Label>
@@ -738,27 +783,54 @@ export default function Keys() {
       <CreateKeyDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        onSave={(data) => {
+        onSave={async (data) => {
           const validityMinutes = data.permanent
             ? 99999999
             : data.useCustom
             ? data.customDays * 1440 + data.customHours * 60 + data.customMinutes
             : VALIDITY_PRESETS[data.validityPreset].minutes;
 
-          createKey({
-            keyName: data.keyName,
-            providerId: data.providerId,
-            serviceId: data.serviceId,
-            hwid: data.hwid,
-            permanent: data.permanent,
-            premium: data.premium,
-            oneTimeUse: data.oneTimeUse,
-            expiryOnFirstUse: data.expiryOnFirstUse,
-            noHwidBinding: data.noHwidBinding,
-            hwidLimit: data.hwidLimit ?? undefined,
-            validityMinutes,
-          });
-          toast({ title: "Key created successfully" });
+          if (data.scriptId) {
+            // Create a real DB-backed key that works in Roblox
+            try {
+              const res = await fetch("/api/user-keys", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  scriptId: data.scriptId,
+                  validityMinutes,
+                  hwid: data.hwid || null,
+                }),
+              });
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({ error: "Unknown error" }));
+                toast({ title: "Failed to create key", description: err.error, variant: "destructive" });
+                return;
+              }
+              const created: GeneratedKey & { scriptName: string } = await res.json();
+              setGeneratedKeys((prev) => [created, ...prev]);
+              setTab("generated");
+              toast({ title: "Key created", description: created.keyValue });
+            } catch {
+              toast({ title: "Network error", description: "Could not create key", variant: "destructive" });
+            }
+          } else {
+            // No script selected — store locally for display only
+            createKey({
+              keyName: data.keyName,
+              providerId: data.providerId,
+              serviceId: data.serviceId,
+              hwid: data.hwid,
+              permanent: data.permanent,
+              premium: data.premium,
+              oneTimeUse: data.oneTimeUse,
+              expiryOnFirstUse: data.expiryOnFirstUse,
+              noHwidBinding: data.noHwidBinding,
+              hwidLimit: data.hwidLimit ?? undefined,
+              validityMinutes,
+            });
+            toast({ title: "Key created (local only — select a script to make it work in Roblox)" });
+          }
         }}
       />
     </div>

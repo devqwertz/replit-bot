@@ -1,0 +1,73 @@
+## In-Game Key Verification UI
+
+When a user executes a script, for example:
+
+```lua
+loadstring(game:HttpGet("https://your-domain.com/api/load/script-id"))()
+```
+
+a custom key verification UI should automatically appear.
+
+The UI should contain:
+
+* Close Button
+* Key Input Field
+* Get Key Button
+* Verify Key Button
+
+### Key Generation Flow
+
+1. The user clicks **Get Key**.
+2. The key URL is automatically copied to their clipboard.
+3. The user opens the URL in their browser.
+4. They are redirected to a checkpoint page displaying all required checkpoints.
+
+Each checkpoint contains an **Open Checkpoint** button.
+
+When clicked:
+
+1. The user is redirected to the configured service provider (for example Linkvertise).
+2. The user must successfully complete the provider's requirements.
+3. Bypass attempts should be detected and rejected.
+4. If the provider reports an invalid completion state, the user must not be able to generate a valid key.
+
+After successfully completing the provider step:
+
+1. The user is redirected back to the checkpoint page.
+2. The **Done** button becomes available.
+3. The user clicks **Done** to validate the checkpoint.
+
+Once all checkpoints are completed:
+
+1. The user is redirected to the key page.
+2. Their generated key is displayed.
+3. The user copies the key.
+4. The user returns to Roblox and pastes the key into the verification UI.
+5. The user clicks **Verify Key**.
+
+### Key Security
+
+* Keys should be bound to the user that generated them.
+* Other users must not be able to use the same key.
+* Support HWID binding.
+* Support IP tracking.
+* Support expiration timers.
+* Support premium keys.
+* Support one-time-use keys.
+* Keys should be validated server-side only.
+* Key validation responses should be encrypted/signed to prevent client-side tampering.
+
+### User Experience
+
+The entire process should feel modern and seamless:
+
+* Smooth animations
+* Modern dark theme UI
+* Progress indicator for completed checkpoints
+* Copy-to-clipboard feedback
+* Success and error notifications
+* Mobile-friendly checkpoint pages
+* Fast loading times
+
+The UI design should closely match the provided reference image while maintaining a clean and professional appearance.
+

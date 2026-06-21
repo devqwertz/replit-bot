@@ -7,7 +7,7 @@ const router: IRouter = Router();
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const seg = () => Array.from({ length: 4 }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join("");
-const genKey = () => `XEIOA-${seg()}-${seg()}-${seg()}`;
+export const genKey = () => `XEIOA-${seg()}-${seg()}-${seg()}`;
 
 function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -19,79 +19,8 @@ function getOrigin(req: import("express").Request): string {
   return `${proto}://${host}`;
 }
 
-// ── Step 1: User visits /api/getkey/:scriptKey ──────────────────────────────
-router.get("/getkey/:scriptKey", async (req, res): Promise<void> => {
-  const scriptKey = Array.isArray(req.params.scriptKey) ? req.params.scriptKey[0] : req.params.scriptKey;
-
-  const [script] = await db
-    .select({ id: scriptsTable.id, name: scriptsTable.name, service: scriptsTable.service, status: scriptsTable.status, obfuscatedCode: scriptsTable.obfuscatedCode })
-    .from(scriptsTable)
-    .where(eq(scriptsTable.scriptKey, scriptKey));
-
-  if (!script || script.status !== "active" || !script.obfuscatedCode) {
-    res.status(404).type("text/html").send(errorPage("Script not found or has no key system enabled."));
-    return;
-  }
-
-  const origin = getOrigin(req);
-  const checkpointUrl = process.env["CHECKPOINT_URL"] ?? process.env["LINKVERTISE_URL"] ?? "";
-  const session = createCheckpointSession(scriptKey);
-  const verifyUrl = `${origin}/api/getkey/verify?session=${session}&scriptKey=${encodeURIComponent(scriptKey)}`;
-
-  if (checkpointUrl) {
-    // Redirect through the checkpoint
-    const encoded = Buffer.from(verifyUrl).toString("base64url");
-    const redirect = checkpointUrl.includes("{url}")
-      ? checkpointUrl.replace("{url}", encodeURIComponent(verifyUrl))
-      : `${checkpointUrl}${encoded}`;
-    res.redirect(302, redirect);
-  } else {
-    // Dev mode: skip checkpoint, go straight to verify
-    res.redirect(302, verifyUrl);
-  }
-});
-
-// ── Step 2: User returns from checkpoint ─────────────────────────────────────
-router.get("/getkey/verify", async (req, res): Promise<void> => {
-  const token = typeof req.query.session === "string" ? req.query.session : "";
-  const scriptKey = typeof req.query.scriptKey === "string" ? req.query.scriptKey : "";
-
-  if (!token || !scriptKey) {
-    res.status(400).type("text/html").send(errorPage("Missing session or scriptKey."));
-    return;
-  }
-
-  // In dev mode (no checkpoint URL) bypass the anti-timing check
-  const bypassTiming = !process.env["CHECKPOINT_URL"] && !process.env["LINKVERTISE_URL"];
-  const result = consumeCheckpointSession(token, scriptKey, bypassTiming ? 0 : 5_000);
-  if (!result.ok) {
-    res.status(400).type("text/html").send(errorPage(result.reason));
-    return;
-  }
-
-  const [script] = await db
-    .select({ id: scriptsTable.id, name: scriptsTable.name, service: scriptsTable.service, status: scriptsTable.status, obfuscatedCode: scriptsTable.obfuscatedCode })
-    .from(scriptsTable)
-    .where(eq(scriptsTable.scriptKey, scriptKey));
-
-  if (!script || script.status !== "active" || !script.obfuscatedCode) {
-    res.status(404).type("text/html").send(errorPage("Script not available."));
-    return;
-  }
-
-  const keyValue = genKey();
-  const expiresAt = new Date(Date.now() + 24 * 3_600_000); // 24h default
-
-  await db.insert(userKeysTable).values({
-    scriptId: script.id,
-    scriptKey,
-    keyValue,
-    expiresAt,
-  });
-
-  const displayName = escapeHtml(script.service || script.name);
-
-  res.type("text/html").send(`<!DOCTYPE html>
+function keyPageHtml(displayName: string, keyValue: string) {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -201,7 +130,84 @@ router.get("/getkey/verify", async (req, res): Promise<void> => {
     }
   </script>
 </body>
-</html>`);
+</html>`;
+}
+
+function errorPage(msg: string) {
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Error</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{background:#080812;color:#e2e2f0;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}
+.c{text-align:center;padding:2rem;background:#12121e;border:1px solid rgba(239,68,68,.3);border-radius:1rem;max-width:400px;}
+h2{color:#ef4444;margin-bottom:.75rem;}p{color:#888;font-size:.9rem;}
+a{color:#a5b4fc;text-decoration:none;display:inline-block;margin-top:1rem;font-size:.85rem;}
+</style></head><body><div class="c"><h2>✕ Error</h2><p>${escapeHtml(msg)}</p>
+<a href="javascript:history.back()">← Go Back</a></div></body></html>`;
+}
+
+// ── Step 2 declared FIRST so Express does not match "verify" as :scriptKey ───
+router.get("/getkey/verify", async (req, res): Promise<void> => {
+  const token = typeof req.query.session === "string" ? req.query.session : "";
+  const scriptKey = typeof req.query.scriptKey === "string" ? req.query.scriptKey : "";
+
+  if (!token || !scriptKey) {
+    res.status(400).type("text/html").send(errorPage("Missing session or scriptKey."));
+    return;
+  }
+
+  const bypassTiming = !process.env["CHECKPOINT_URL"] && !process.env["LINKVERTISE_URL"];
+  const result = consumeCheckpointSession(token, scriptKey, bypassTiming ? 0 : 5_000);
+  if (!result.ok) {
+    res.status(400).type("text/html").send(errorPage(result.reason));
+    return;
+  }
+
+  const [script] = await db
+    .select({ id: scriptsTable.id, name: scriptsTable.name, service: scriptsTable.service, status: scriptsTable.status, obfuscatedCode: scriptsTable.obfuscatedCode })
+    .from(scriptsTable)
+    .where(eq(scriptsTable.scriptKey, scriptKey));
+
+  if (!script || script.status !== "active" || !script.obfuscatedCode) {
+    res.status(404).type("text/html").send(errorPage("Script not available."));
+    return;
+  }
+
+  const keyValue = genKey();
+  const expiresAt = new Date(Date.now() + 24 * 3_600_000);
+
+  await db.insert(userKeysTable).values({ scriptId: script.id, scriptKey, keyValue, expiresAt });
+
+  const displayName = escapeHtml(script.service || script.name);
+  res.type("text/html").send(keyPageHtml(displayName, keyValue));
+});
+
+// ── Step 1: User visits /api/getkey/:scriptKey ───────────────────────────────
+router.get("/getkey/:scriptKey", async (req, res): Promise<void> => {
+  const scriptKey = Array.isArray(req.params.scriptKey) ? req.params.scriptKey[0] : req.params.scriptKey;
+
+  const [script] = await db
+    .select({ id: scriptsTable.id, name: scriptsTable.name, service: scriptsTable.service, status: scriptsTable.status, obfuscatedCode: scriptsTable.obfuscatedCode })
+    .from(scriptsTable)
+    .where(eq(scriptsTable.scriptKey, scriptKey));
+
+  if (!script || script.status !== "active" || !script.obfuscatedCode) {
+    res.status(404).type("text/html").send(errorPage("Script not found or has no key system enabled."));
+    return;
+  }
+
+  const origin = getOrigin(req);
+  const checkpointUrl = process.env["CHECKPOINT_URL"] ?? process.env["LINKVERTISE_URL"] ?? "";
+  const session = createCheckpointSession(scriptKey);
+  const verifyUrl = `${origin}/api/getkey/verify?session=${session}&scriptKey=${encodeURIComponent(scriptKey)}`;
+
+  if (checkpointUrl) {
+    const encoded = Buffer.from(verifyUrl).toString("base64url");
+    const redirect = checkpointUrl.includes("{url}")
+      ? checkpointUrl.replace("{url}", encodeURIComponent(verifyUrl))
+      : `${checkpointUrl}${encoded}`;
+    res.redirect(302, redirect);
+  } else {
+    res.redirect(302, verifyUrl);
+  }
 });
 
 // ── Key check (called from Roblox GUI) ───────────────────────────────────────
@@ -232,23 +238,15 @@ router.get("/key/check", async (req, res): Promise<void> => {
     return;
   }
 
-  // HWID locking
   if (entry.hwidLocked && entry.hwid && hwid && entry.hwid !== hwid) {
     res.json({ valid: false, error: "Key is locked to a different device" });
     return;
   }
 
-  // Lock HWID on first use
   if (!entry.hwidLocked && hwid) {
-    await db
-      .update(userKeysTable)
-      .set({ hwid, hwidLocked: true, lastUsedAt: now })
-      .where(eq(userKeysTable.id, entry.id));
+    await db.update(userKeysTable).set({ hwid, hwidLocked: true, lastUsedAt: now }).where(eq(userKeysTable.id, entry.id));
   } else {
-    await db
-      .update(userKeysTable)
-      .set({ lastUsedAt: now })
-      .where(eq(userKeysTable.id, entry.id));
+    await db.update(userKeysTable).set({ lastUsedAt: now }).where(eq(userKeysTable.id, entry.id));
   }
 
   const [script] = await db
@@ -263,16 +261,5 @@ router.get("/key/check", async (req, res): Promise<void> => {
 
   res.json({ valid: true, script: script.obfuscatedCode });
 });
-
-function errorPage(msg: string) {
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Error</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>body{background:#080812;color:#e2e2f0;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}
-.c{text-align:center;padding:2rem;background:#12121e;border:1px solid rgba(239,68,68,.3);border-radius:1rem;max-width:400px;}
-h2{color:#ef4444;margin-bottom:.75rem;}p{color:#888;font-size:.9rem;}
-a{color:#a5b4fc;text-decoration:none;display:inline-block;margin-top:1rem;font-size:.85rem;}
-</style></head><body><div class="c"><h2>✕ Error</h2><p>${escapeHtml(msg)}</p>
-<a href="javascript:history.back()">← Go Back</a></div></body></html>`;
-}
 
 export default router;
