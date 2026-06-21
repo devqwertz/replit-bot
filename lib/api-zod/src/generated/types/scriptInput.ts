@@ -13,4 +13,5 @@ export interface ScriptInput {
   code?: string;
   service?: string;
   provider?: string;
+  checkpointUrl?: string;
 }

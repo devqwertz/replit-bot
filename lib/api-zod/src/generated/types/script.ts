@@ -23,6 +23,8 @@ export interface Script {
   service?: string | null;
   /** @nullable */
   provider?: string | null;
+  /** @nullable */
+  checkpointUrl?: string | null;
   status: ScriptStatus;
   obfuscationStatus: ScriptObfuscationStatus;
   executions: number;

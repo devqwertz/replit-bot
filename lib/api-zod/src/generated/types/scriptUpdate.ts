@@ -14,5 +14,6 @@ export interface ScriptUpdate {
   code?: string;
   service?: string;
   provider?: string;
+  checkpointUrl?: string;
   status?: ScriptUpdateStatus;
 }

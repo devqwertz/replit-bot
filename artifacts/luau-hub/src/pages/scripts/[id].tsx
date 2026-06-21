@@ -209,6 +209,7 @@ export default function ScriptDetail({ id }: { id: string }) {
   const [editDesc, setEditDesc] = useState("");
   const [editCode, setEditCode] = useState("");
   const [editService, setEditService] = useState("");
+  const [editCheckpointUrl, setEditCheckpointUrl] = useState("");
 
   // Notify state — notifySession=null means broadcast to all
   const [notifyOpen, setNotifyOpen] = useState(false);
@@ -361,6 +362,7 @@ export default function ScriptDetail({ id }: { id: string }) {
     setEditDesc(script?.description ?? "");
     setEditCode(script?.code ?? "");
     setEditService(script?.service ?? "");
+    setEditCheckpointUrl((script as any)?.checkpointUrl ?? "");
     setEditOpen(true);
   };
 
@@ -802,10 +804,20 @@ export default function ScriptDetail({ id }: { id: string }) {
               <p className="text-[11px] text-amber-500/80">Updating source code will invalidate the current key. You must regenerate the key to redeploy.</p>
               <Textarea value={editCode} onChange={e => setEditCode(e.target.value)} className="bg-background/50 border-white/10 font-mono text-xs h-48 resize-none" placeholder="-- Paste your Lua source here" />
             </div>
+            <div className="space-y-1.5 rounded-lg border border-white/8 bg-indigo-500/5 p-3">
+              <Label className="text-xs text-indigo-400 font-medium">🔗 Key System Checkpoint URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                value={editCheckpointUrl}
+                onChange={e => setEditCheckpointUrl(e.target.value)}
+                className="bg-background/50 border-white/10 font-mono text-xs"
+                placeholder="https://linkvertise.com/XXXXX/your-link?url="
+              />
+              <p className="text-[11px] text-muted-foreground/60">Users must complete this checkpoint before receiving their key. Leave empty to skip.</p>
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" className="border-white/10" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button onClick={() => updateScript.mutate({ id: script.id, data: { name: editName, description: editDesc || undefined, code: editCode || undefined, service: editService || undefined } })} disabled={updateScript.isPending || !editName.trim()}>
+            <Button onClick={() => updateScript.mutate({ id: script.id, data: { name: editName, description: editDesc || undefined, code: editCode || undefined, service: editService || undefined, checkpointUrl: editCheckpointUrl || undefined } as any })} disabled={updateScript.isPending || !editName.trim()}>
               {updateScript.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

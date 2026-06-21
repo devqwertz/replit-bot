@@ -17,6 +17,7 @@ export const scriptsTable = pgTable("scripts", {
   executions: integer("executions").notNull().default(0),
   successCount: integer("success_count").notNull().default(0),
   failureCount: integer("failure_count").notNull().default(0),
+  checkpointUrl: text("checkpoint_url"),
   webhookUrl: text("webhook_url"),
   webhookLogsEnabled: boolean("webhook_logs_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

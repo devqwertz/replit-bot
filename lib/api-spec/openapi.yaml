@@ -325,6 +325,8 @@ components:
           type: ["string", "null"]
         provider:
           type: ["string", "null"]
+        checkpointUrl:
+          type: ["string", "null"]
         status:
           type: string
           enum: [active, inactive]
@@ -359,6 +361,8 @@ components:
           type: string
         provider:
           type: string
+        checkpointUrl:
+          type: string
 
     ScriptUpdate:
       type: object
@@ -373,6 +377,8 @@ components:
         service:
           type: string
         provider:
+          type: string
+        checkpointUrl:
           type: string
         status:
           type: string

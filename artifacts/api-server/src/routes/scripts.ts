@@ -89,6 +89,7 @@ function mapScript(s: typeof scriptsTable.$inferSelect) {
     scriptKey: s.scriptKey ?? null,
     service: s.service ?? null,
     provider: s.provider ?? null,
+    checkpointUrl: s.checkpointUrl ?? null,
     status: s.status,
     obfuscationStatus: s.obfuscationStatus,
     executions: s.executions,
@@ -141,6 +142,7 @@ router.post("/scripts", requireAuth, async (req, res): Promise<void> => {
       code: parsed.data.code ?? null,
       service: parsed.data.service ?? null,
       provider: parsed.data.provider ?? null,
+      checkpointUrl: (parsed.data as any).checkpointUrl ?? null,
       webhookUrl: (parsed.data as any).webhookUrl ?? null,
       webhookLogsEnabled: (parsed.data as any).webhookLogsEnabled ?? false,
       obfuscationStatus: "pending",
@@ -218,6 +220,7 @@ router.patch("/scripts/:id", requireAuth, async (req, res): Promise<void> => {
   }
   if (body.data.service !== undefined) updateData.service = body.data.service;
   if (body.data.provider !== undefined) updateData.provider = body.data.provider;
+  if ((body.data as any).checkpointUrl !== undefined) updateData.checkpointUrl = (body.data as any).checkpointUrl || null;
   if (body.data.status !== undefined) updateData.status = body.data.status;
 
   const [script] = await db

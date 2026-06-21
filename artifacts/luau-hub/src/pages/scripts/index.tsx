@@ -327,6 +327,7 @@ function CreateScriptDialog() {
   const [code, setCode] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookLogsEnabled, setWebhookLogsEnabled] = useState(false);
+  const [checkpointUrl, setCheckpointUrl] = useState("");
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -337,7 +338,7 @@ function CreateScriptDialog() {
         queryClient.invalidateQueries({ queryKey: getListScriptsQueryKey() });
         setOpen(false);
         setName(""); setService(""); setProvider(""); setDesc(""); setCode("");
-        setWebhookUrl(""); setWebhookLogsEnabled(false);
+        setWebhookUrl(""); setWebhookLogsEnabled(false); setCheckpointUrl("");
         if (code && data.obfuscationStatus === "complete") {
           toast({ title: "Script protected & ready", description: "Log collector injected automatically — your loadstring is ready." });
         } else {
@@ -359,6 +360,7 @@ function CreateScriptDialog() {
         provider: provider || undefined,
         description: desc || undefined,
         code: code || undefined,
+        ...(checkpointUrl ? { checkpointUrl } : {}),
         ...(webhookUrl ? { webhookUrl, webhookLogsEnabled } : {}),
       }
     });
@@ -423,6 +425,28 @@ function CreateScriptDialog() {
                 className="min-h-[180px] font-mono text-sm bg-black/60 border-white/10 resize-none"
                 data-testid="textarea-script-code"
               />
+            </div>
+
+            {/* Checkpoint / Linkvertise URL */}
+            <div className="space-y-3 rounded-lg border border-white/8 bg-indigo-500/5 p-4">
+              <div className="flex items-center gap-2">
+                <span className="text-indigo-400 text-base">🔗</span>
+                <Label className="text-indigo-400 font-medium">Key System Checkpoint <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="checkpointUrl" className="text-xs text-muted-foreground">Linkvertise / Checkpoint URL</Label>
+                <Input
+                  id="checkpointUrl"
+                  type="url"
+                  value={checkpointUrl}
+                  onChange={e => setCheckpointUrl(e.target.value)}
+                  placeholder="https://linkvertise.com/XXXXX/your-link?url="
+                  className="font-mono text-xs bg-black/50 border-white/10"
+                />
+                <p className="text-[11px] text-muted-foreground/60">
+                  When set, users must complete this checkpoint before receiving their key. Leave empty to skip (dev mode).
+                </p>
+              </div>
             </div>
 
             {/* Webhook Section */}

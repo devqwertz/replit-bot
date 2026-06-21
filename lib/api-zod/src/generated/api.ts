@@ -34,6 +34,7 @@ export const ListScriptsResponseItem = zod.object({
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
   "provider": zod.string().nullish(),
+  "checkpointUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
@@ -56,7 +57,8 @@ export const CreateScriptBody = zod.object({
   "description": zod.string().optional(),
   "code": zod.string().optional(),
   "service": zod.string().optional(),
-  "provider": zod.string().optional()
+  "provider": zod.string().optional(),
+  "checkpointUrl": zod.string().optional()
 })
 
 
@@ -76,6 +78,7 @@ export const GetScriptResponse = zod.object({
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
   "provider": zod.string().nullish(),
+  "checkpointUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
@@ -102,6 +105,7 @@ export const UpdateScriptBody = zod.object({
   "code": zod.string().optional(),
   "service": zod.string().optional(),
   "provider": zod.string().optional(),
+  "checkpointUrl": zod.string().optional(),
   "status": zod.enum(['active', 'inactive']).optional()
 })
 
@@ -114,6 +118,7 @@ export const UpdateScriptResponse = zod.object({
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
   "provider": zod.string().nullish(),
+  "checkpointUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
@@ -148,6 +153,7 @@ export const ObfuscateScriptResponse = zod.object({
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
   "provider": zod.string().nullish(),
+  "checkpointUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
@@ -174,6 +180,7 @@ export const ToggleScriptResponse = zod.object({
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
   "provider": zod.string().nullish(),
+  "checkpointUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
@@ -301,6 +308,7 @@ export const GetTopScriptsResponseItem = zod.object({
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
   "provider": zod.string().nullish(),
+  "checkpointUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),

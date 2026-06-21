@@ -185,7 +185,7 @@ router.get("/getkey/:scriptKey", async (req, res): Promise<void> => {
   const scriptKey = Array.isArray(req.params.scriptKey) ? req.params.scriptKey[0] : req.params.scriptKey;
 
   const [script] = await db
-    .select({ id: scriptsTable.id, name: scriptsTable.name, service: scriptsTable.service, status: scriptsTable.status, obfuscatedCode: scriptsTable.obfuscatedCode })
+    .select({ id: scriptsTable.id, name: scriptsTable.name, service: scriptsTable.service, status: scriptsTable.status, obfuscatedCode: scriptsTable.obfuscatedCode, checkpointUrl: scriptsTable.checkpointUrl })
     .from(scriptsTable)
     .where(eq(scriptsTable.scriptKey, scriptKey));
 
@@ -195,7 +195,8 @@ router.get("/getkey/:scriptKey", async (req, res): Promise<void> => {
   }
 
   const origin = getOrigin(req);
-  const checkpointUrl = process.env["CHECKPOINT_URL"] ?? process.env["LINKVERTISE_URL"] ?? "";
+  // Per-script checkpoint URL takes priority over env vars
+  const checkpointUrl = script.checkpointUrl ?? process.env["CHECKPOINT_URL"] ?? process.env["LINKVERTISE_URL"] ?? "";
   const session = createCheckpointSession(scriptKey);
   const verifyUrl = `${origin}/api/getkey/verify?session=${session}&scriptKey=${encodeURIComponent(scriptKey)}`;
 
