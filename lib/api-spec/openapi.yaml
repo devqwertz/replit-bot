@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: LuauHub API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: scripts
+    description: Script management
+  - name: logs
+    description: Execution logs
+  - name: analytics
+    description: Analytics and statistics
 paths:
   /healthz:
     get:
@@ -24,6 +30,271 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /scripts:
+    get:
+      operationId: listScripts
+      tags: [scripts]
+      summary: List all scripts
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, inactive]
+      responses:
+        "200":
+          description: List of scripts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Script"
+    post:
+      operationId: createScript
+      tags: [scripts]
+      summary: Create a new script
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScriptInput"
+      responses:
+        "201":
+          description: Created script
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Script"
+
+  /scripts/{id}:
+    get:
+      operationId: getScript
+      tags: [scripts]
+      summary: Get a script by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Script details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Script"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateScript
+      tags: [scripts]
+      summary: Update a script
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScriptUpdate"
+      responses:
+        "200":
+          description: Updated script
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Script"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteScript
+      tags: [scripts]
+      summary: Delete a script
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /scripts/{id}/obfuscate:
+    post:
+      operationId: obfuscateScript
+      tags: [scripts]
+      summary: Trigger obfuscation for a script
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Obfuscation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Script"
+        "404":
+          description: Not found
+
+  /scripts/{id}/toggle:
+    patch:
+      operationId: toggleScript
+      tags: [scripts]
+      summary: Toggle script active/inactive status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated script
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Script"
+        "404":
+          description: Not found
+
+  /scripts/{id}/logs:
+    get:
+      operationId: getScriptLogs
+      tags: [logs]
+      summary: Get execution logs for a script
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Execution logs for a script
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExecutionLog"
+
+  /logs:
+    get:
+      operationId: listLogs
+      tags: [logs]
+      summary: List all execution logs
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [success, failed]
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: All execution logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExecutionLog"
+    post:
+      operationId: recordExecution
+      tags: [logs]
+      summary: Record a script execution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecutionLogInput"
+      responses:
+        "201":
+          description: Recorded log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionLog"
+
+  /analytics/overview:
+    get:
+      operationId: getAnalyticsOverview
+      tags: [analytics]
+      summary: Get analytics overview stats
+      responses:
+        "200":
+          description: Analytics overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsOverview"
+
+  /analytics/chart:
+    get:
+      operationId: getExecutionChart
+      tags: [analytics]
+      summary: Get execution chart data (timeseries, last 30 days)
+      responses:
+        "200":
+          description: Chart data array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChartDataPoint"
+
+  /analytics/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [analytics]
+      summary: Get recent execution activity across all scripts
+      responses:
+        "200":
+          description: Recent activity items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExecutionLog"
+
+  /analytics/top-scripts:
+    get:
+      operationId: getTopScripts
+      tags: [analytics]
+      summary: Get top scripts by execution count
+      responses:
+        "200":
+          description: Top scripts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Script"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +305,144 @@ components:
       required:
         - status
 
+    Script:
+      type: object
+      required: [id, name, status, obfuscationStatus, executions, successCount, failureCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        code:
+          type: ["string", "null"]
+        obfuscatedCode:
+          type: ["string", "null"]
+        scriptKey:
+          type: ["string", "null"]
+        service:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [active, inactive]
+        obfuscationStatus:
+          type: string
+          enum: [pending, processing, complete, failed]
+        executions:
+          type: integer
+        successCount:
+          type: integer
+        failureCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ScriptInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        code:
+          type: string
+        service:
+          type: string
+
+    ScriptUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        code:
+          type: string
+        service:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+
+    ExecutionLog:
+      type: object
+      required: [id, scriptId, scriptName, status, executorId, createdAt]
+      properties:
+        id:
+          type: integer
+        scriptId:
+          type: integer
+        scriptName:
+          type: string
+        status:
+          type: string
+          enum: [success, failed]
+        executorId:
+          type: string
+        robloxUsername:
+          type: ["string", "null"]
+        robloxUserId:
+          type: ["string", "null"]
+        robloxClientId:
+          type: ["string", "null"]
+        robloxThumbnailUrl:
+          type: ["string", "null"]
+        robloxExecutor:
+          type: ["string", "null"]
+        duration:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    ExecutionLogInput:
+      type: object
+      required: [scriptId, status, executorId]
+      properties:
+        scriptId:
+          type: integer
+        status:
+          type: string
+          enum: [success, failed]
+        executorId:
+          type: string
+        duration:
+          type: integer
+
+    AnalyticsOverview:
+      type: object
+      required: [totalScripts, totalExecutions, activeUsers, successRate, activeScripts, obfuscatedScripts]
+      properties:
+        totalScripts:
+          type: integer
+        totalExecutions:
+          type: integer
+        activeUsers:
+          type: integer
+        successRate:
+          type: number
+        activeScripts:
+          type: integer
+        obfuscatedScripts:
+          type: integer
+
+    ChartDataPoint:
+      type: object
+      required: [date, executions, success, failed]
+      properties:
+        date:
+          type: string
+        executions:
+          type: integer
+        success:
+          type: integer
+        failed:
+          type: integer
