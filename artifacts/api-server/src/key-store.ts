@@ -3,6 +3,7 @@ interface CheckpointSession {
   scriptKey: string;
   createdAt: number;
   used: boolean;
+  requiresTiming: boolean;
 }
 
 const sessions = new Map<string, CheckpointSession>();
@@ -12,9 +13,9 @@ function randomHex(len: number) {
   return Array.from({ length: len }, () => HEX[Math.floor(Math.random() * 16)]).join("");
 }
 
-export function createCheckpointSession(scriptKey: string): string {
+export function createCheckpointSession(scriptKey: string, requiresTiming = false): string {
   const token = randomHex(32);
-  sessions.set(token, { scriptKey, createdAt: Date.now(), used: false });
+  sessions.set(token, { scriptKey, createdAt: Date.now(), used: false, requiresTiming });
   // Prune old sessions
   const cutoff = Date.now() - 600_000;
   for (const [k, v] of sessions) if (v.createdAt < cutoff) sessions.delete(k);
@@ -24,7 +25,6 @@ export function createCheckpointSession(scriptKey: string): string {
 export function consumeCheckpointSession(
   token: string,
   scriptKey: string,
-  minAgeMs = 5_000,
   maxAgeMs = 300_000
 ): { ok: true } | { ok: false; reason: string } {
   const s = sessions.get(token);
@@ -32,7 +32,7 @@ export function consumeCheckpointSession(
   if (s.used) return { ok: false, reason: "Session already used" };
   if (s.scriptKey !== scriptKey) return { ok: false, reason: "Session script mismatch" };
   const age = Date.now() - s.createdAt;
-  if (age < minAgeMs) return { ok: false, reason: "Checkpoint completed too fast — please complete the full checkpoint" };
+  if (s.requiresTiming && age < 5_000) return { ok: false, reason: "Checkpoint completed too fast — please complete the full checkpoint" };
   if (age > maxAgeMs) return { ok: false, reason: "Session expired — please start again" };
   s.used = true;
   return { ok: true };

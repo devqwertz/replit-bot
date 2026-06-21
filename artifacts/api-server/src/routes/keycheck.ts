@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gt } from "drizzle-orm";
-import { db, scriptsTable, userKeysTable } from "@workspace/db";
+import { db, scriptsTable, userKeysTable, integrationsTable } from "@workspace/db";
 import { createCheckpointSession, consumeCheckpointSession } from "../key-store";
 
 const router: IRouter = Router();
@@ -19,13 +19,122 @@ function getOrigin(req: import("express").Request): string {
   return `${proto}://${host}`;
 }
 
+function checkpointPageHtml(displayName: string, checkpointHref: string) {
+  const safeDisplayName = escapeHtml(displayName);
+  const safeHref = escapeHtml(checkpointHref);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${safeDisplayName} — Key System</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #080812;
+      color: #e2e2f0;
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .card {
+      background: linear-gradient(145deg, #12121e, #0d0d18);
+      border: 1px solid rgba(99,102,241,.3);
+      border-radius: 1.25rem;
+      padding: 2.5rem 2rem;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 0 60px -10px rgba(99,102,241,.35), 0 25px 50px -12px rgba(0,0,0,.7);
+    }
+    .shield {
+      width: 72px; height: 72px;
+      background: rgba(99,102,241,.15);
+      border: 1.5px solid rgba(99,102,241,.45);
+      border-radius: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.5rem;
+      font-size: 2rem;
+      box-shadow: 0 0 30px -5px rgba(99,102,241,.4);
+    }
+    h1 { font-size: 1.35rem; font-weight: 700; margin-bottom: .35rem; }
+    .sub { color: #888; font-size: .875rem; margin-bottom: 1.75rem; }
+    .steps {
+      background: #0a0a14;
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: .875rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+    .step {
+      display: flex; align-items: flex-start; gap: .75rem;
+      font-size: .82rem; color: #888;
+      padding: .55rem 0;
+    }
+    .step + .step { border-top: 1px solid rgba(255,255,255,.05); }
+    .num {
+      background: rgba(99,102,241,.2); border: 1px solid rgba(99,102,241,.35);
+      border-radius: 50%; width: 20px; height: 20px; min-width: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .7rem; font-weight: 700; color: #a5b4fc;
+    }
+    .btn {
+      display: block; width: 100%; padding: .875rem;
+      background: linear-gradient(135deg, #4f46e5, #4338ca);
+      color: #fff; border: none; border-radius: .75rem;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      text-decoration: none;
+      transition: opacity .15s, transform .1s;
+      margin-bottom: .75rem;
+      box-shadow: 0 0 24px -4px rgba(99,102,241,.5);
+    }
+    .btn:hover { opacity: .9; }
+    .btn:active { transform: scale(.98); }
+    .info { font-size: .75rem; color: #444; margin-top: .5rem; }
+    .badge {
+      display: inline-block;
+      background: rgba(99,102,241,.12);
+      border: 1px solid rgba(99,102,241,.25);
+      color: #a5b4fc;
+      font-size: .7rem;
+      padding: .2rem .6rem;
+      border-radius: 999px;
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="shield">🔑</div>
+    <div class="badge">Key System</div>
+    <h1>${safeDisplayName}</h1>
+    <p class="sub">Complete the checkpoint below to receive your key</p>
+
+    <div class="steps">
+      <div class="step"><div class="num">1</div><span>Click <strong>Open Checkpoint</strong> below</span></div>
+      <div class="step"><div class="num">2</div><span>Complete the required steps on the checkpoint page</span></div>
+      <div class="step"><div class="num">3</div><span>You will be automatically redirected back with your key</span></div>
+    </div>
+
+    <a class="btn" href="${safeHref}">🔓 Open Checkpoint</a>
+    <div class="info">Do not close this process. You must complete the full checkpoint to receive a valid key.</div>
+  </div>
+</body>
+</html>`;
+}
+
 function keyPageHtml(displayName: string, keyValue: string) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${displayName} — Key System</title>
+  <title>${escapeHtml(displayName)} — Key System</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -154,8 +263,7 @@ router.get("/getkey/verify", async (req, res): Promise<void> => {
     return;
   }
 
-  const bypassTiming = !process.env["CHECKPOINT_URL"] && !process.env["LINKVERTISE_URL"];
-  const result = consumeCheckpointSession(token, scriptKey, bypassTiming ? 0 : 5_000);
+  const result = consumeCheckpointSession(token, scriptKey);
   if (!result.ok) {
     res.status(400).type("text/html").send(errorPage(result.reason));
     return;
@@ -176,7 +284,7 @@ router.get("/getkey/verify", async (req, res): Promise<void> => {
 
   await db.insert(userKeysTable).values({ scriptId: script.id, scriptKey, keyValue, expiresAt });
 
-  const displayName = escapeHtml(script.service || script.name);
+  const displayName = script.service || script.name;
   res.type("text/html").send(keyPageHtml(displayName, keyValue));
 });
 
@@ -185,7 +293,14 @@ router.get("/getkey/:scriptKey", async (req, res): Promise<void> => {
   const scriptKey = Array.isArray(req.params.scriptKey) ? req.params.scriptKey[0] : req.params.scriptKey;
 
   const [script] = await db
-    .select({ id: scriptsTable.id, name: scriptsTable.name, service: scriptsTable.service, status: scriptsTable.status, obfuscatedCode: scriptsTable.obfuscatedCode, checkpointUrl: scriptsTable.checkpointUrl })
+    .select({
+      id: scriptsTable.id,
+      name: scriptsTable.name,
+      service: scriptsTable.service,
+      status: scriptsTable.status,
+      obfuscatedCode: scriptsTable.obfuscatedCode,
+      checkpointUrl: scriptsTable.checkpointUrl,
+    })
     .from(scriptsTable)
     .where(eq(scriptsTable.scriptKey, scriptKey));
 
@@ -195,20 +310,49 @@ router.get("/getkey/:scriptKey", async (req, res): Promise<void> => {
   }
 
   const origin = getOrigin(req);
-  // Per-script checkpoint URL takes priority over env vars
-  const checkpointUrl = script.checkpointUrl ?? process.env["CHECKPOINT_URL"] ?? process.env["LINKVERTISE_URL"] ?? "";
-  const session = createCheckpointSession(scriptKey);
+  const displayName = script.service || script.name;
+
+  // Per-script checkpointUrl takes priority over global integration
+  let checkpointUrl = script.checkpointUrl ?? "";
+
+  // If no per-script URL, look up active Linkvertise integration from DB
+  if (!checkpointUrl) {
+    const [integration] = await db
+      .select({ publisherId: integrationsTable.publisherId, type: integrationsTable.type })
+      .from(integrationsTable)
+      .where(and(eq(integrationsTable.enabled, true), eq(integrationsTable.type, "linkvertise")))
+      .limit(1);
+
+    if (integration?.publisherId) {
+      // Linkvertise URL format used by modern key systems (Luarmor-style)
+      // Encodes the verify URL as the destination after Linkvertise completion
+      checkpointUrl = `__linkvertise__${integration.publisherId}`;
+    }
+  }
+
+  const session = createCheckpointSession(scriptKey, !!checkpointUrl);
   const verifyUrl = `${origin}/api/getkey/verify?session=${session}&scriptKey=${encodeURIComponent(scriptKey)}`;
 
-  if (checkpointUrl) {
-    const encoded = Buffer.from(verifyUrl).toString("base64url");
-    const redirect = checkpointUrl.includes("{url}")
-      ? checkpointUrl.replace("{url}", encodeURIComponent(verifyUrl))
-      : `${checkpointUrl}${encoded}`;
-    res.redirect(302, redirect);
-  } else {
+  if (!checkpointUrl) {
+    // Dev mode — no checkpoint configured, go straight to verify
     res.redirect(302, verifyUrl);
+    return;
   }
+
+  // Build the full checkpoint redirect URL
+  let checkpointHref: string;
+  if (checkpointUrl.startsWith("__linkvertise__")) {
+    const publisherId = checkpointUrl.replace("__linkvertise__", "");
+    checkpointHref = `https://linkvertise.com/api/url/${encodeURIComponent(publisherId)}?url=${encodeURIComponent(verifyUrl)}`;
+  } else if (checkpointUrl.includes("{url}")) {
+    checkpointHref = checkpointUrl.replace("{url}", encodeURIComponent(verifyUrl));
+  } else {
+    const encoded = Buffer.from(verifyUrl).toString("base64url");
+    checkpointHref = `${checkpointUrl}${encoded}`;
+  }
+
+  // Show the checkpoint landing page
+  res.type("text/html").send(checkpointPageHtml(displayName, checkpointHref));
 });
 
 // ── Key check (called from Roblox GUI) ───────────────────────────────────────

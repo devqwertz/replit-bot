@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export type IntegrationType =
   | "linkvertise"
@@ -47,41 +47,54 @@ export interface Integration {
   createdAt: string;
 }
 
-const STORAGE_KEY = "luauhub:integrations-v2";
+type CreatePayload = Omit<Integration, "id" | "createdAt">;
+type UpdatePayload = Partial<Omit<Integration, "id" | "createdAt">>;
 
-function load(): Integration[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
+const QUERY_KEY = ["/api/integrations"];
+
+async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`);
   }
+  if (res.status === 204) return undefined as T;
+  return res.json();
 }
 
 export function useIntegrations() {
-  const [integrations, setIntegrations] = useState<Integration[]>(load);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(integrations));
-  }, [integrations]);
+  const { data: integrations = [] } = useQuery<Integration[]>({
+    queryKey: QUERY_KEY,
+    queryFn: () => apiFetch<Integration[]>("/api/integrations"),
+  });
 
-  const createIntegration = useCallback((data: Omit<Integration, "id" | "createdAt">) => {
-    const next: Integration = {
-      ...data,
-      id: Math.floor(10000 + Math.random() * 90000).toString(),
-      createdAt: new Date().toISOString(),
-    };
-    setIntegrations((prev) => [...prev, next]);
-    return next;
-  }, []);
+  const createMutation = useMutation({
+    mutationFn: (data: CreatePayload) =>
+      apiFetch<Integration>("/api/integrations", { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
 
-  const updateIntegration = useCallback((id: string, data: Partial<Omit<Integration, "id" | "createdAt">>) => {
-    setIntegrations((prev) => prev.map((i) => (i.id === id ? { ...i, ...data } : i)));
-  }, []);
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdatePayload }) =>
+      apiFetch<Integration>(`/api/integrations/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
 
-  const deleteIntegration = useCallback((id: string) => {
-    setIntegrations((prev) => prev.filter((i) => i.id !== id));
-  }, []);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<void>(`/api/integrations/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
 
-  return { integrations, createIntegration, updateIntegration, deleteIntegration };
+  return {
+    integrations,
+    createIntegration: (data: CreatePayload) => createMutation.mutate(data),
+    updateIntegration: (id: string, data: UpdatePayload) => updateMutation.mutate({ id, data }),
+    deleteIntegration: (id: string) => deleteMutation.mutate(id),
+  };
 }

@@ -9,6 +9,7 @@ import pingRouter from "./ping";
 import sessionsRouter from "./sessions";
 import keycheckRouter from "./keycheck";
 import userKeysRouter from "./user-keys";
+import integrationsRouter from "./integrations";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(logsRouter);
 router.use(analyticsRouter);
 router.use(bansRouter);
 router.use(sessionsRouter);
+router.use(integrationsRouter);
 
 export default router;

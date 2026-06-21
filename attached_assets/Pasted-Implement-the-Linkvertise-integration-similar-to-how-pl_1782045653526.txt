@@ -1,0 +1,70 @@
+Implement the Linkvertise integration similar to how platforms like Luarmor and Junkie handle key systems.
+
+### Overview
+
+The dashboard owner enters a single Linkvertise Publisher ID (for example: `5635095`) inside the Integrations page.
+
+The system should not require manually creating Linkvertise links for every script or every user.
+
+Instead, when a user requests a key:
+
+1. Generate a unique session ID.
+2. Store the session in the database.
+3. Create a checkpoint flow linked to that session.
+4. Automatically generate the Linkvertise redirect URL using the configured Publisher ID.
+5. Track completion through the session system.
+
+### Example Flow
+
+User executes script
+→ Key UI opens
+→ User clicks "Get Key"
+→ Session created
+→ User opens checkpoint page
+→ User clicks "Open Checkpoint"
+→ Redirect through Linkvertise using configured Publisher ID
+→ User completes Linkvertise step
+→ User returns to checkpoint page
+→ Checkpoint marked as completed
+→ Key generated
+→ User verifies key inside Roblox
+
+### Integrations Page
+
+For Linkvertise, add:
+
+* Publisher ID
+* Anti-Bypass Token
+* Enable / Disable Integration
+* Test Integration Button
+
+### Backend Requirements
+
+* Generate unique session IDs for every key request.
+* Store sessions in the database.
+* Track checkpoint completion.
+* Validate all requests server-side.
+* Prevent users from skipping checkpoints.
+* Support multiple checkpoints per provider.
+* Allow different scripts to use different providers.
+
+### Security
+
+* Keys should be generated only after all checkpoints are completed.
+* Keys must be validated server-side.
+* Support HWID binding.
+* Support IP tracking.
+* Support expiration dates.
+* Support premium keys.
+* Support one-time-use keys.
+* Prevent key sharing between users.
+* Prevent client-side bypassing of validation.
+
+### Important
+
+The system should work similarly to modern Roblox key systems such as Luarmor and Junkie:
+
+* One configured Publisher ID can be used for all users.
+* The platform automatically creates unique sessions for each key request.
+* Administrators do not need to manually create Linkvertise links for every user.
+* Everything should be managed automatically through the dashboard and backend.

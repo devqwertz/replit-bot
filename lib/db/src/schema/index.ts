@@ -3,3 +3,4 @@ export * from "./execution_logs";
 export * from "./bans";
 export * from "./sessions";
 export * from "./user_keys";
+export * from "./integrations";
