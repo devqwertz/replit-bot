@@ -313,42 +313,82 @@ router.get("/getkey/:scriptKey", async (req, res): Promise<void> => {
   const displayName = script.service || script.name;
 
   // Per-script checkpointUrl takes priority over global integration
-  let checkpointUrl = script.checkpointUrl ?? "";
+  const perScriptUrl = script.checkpointUrl ?? "";
 
-  // If no per-script URL, look up active Linkvertise integration from DB
-  if (!checkpointUrl) {
+  // Look up active Linkvertise integration from DB
+  let lvPublisherId = "";
+  let lvApiToken = "";
+  let hasIntegration = false;
+
+  if (!perScriptUrl) {
     const [integration] = await db
-      .select({ publisherId: integrationsTable.publisherId, type: integrationsTable.type })
+      .select({
+        publisherId: integrationsTable.publisherId,
+        antiBypassToken: integrationsTable.antiBypassToken,
+      })
       .from(integrationsTable)
       .where(and(eq(integrationsTable.enabled, true), eq(integrationsTable.type, "linkvertise")))
       .limit(1);
 
     if (integration?.publisherId) {
-      // Linkvertise URL format used by modern key systems (Luarmor-style)
-      // Encodes the verify URL as the destination after Linkvertise completion
-      checkpointUrl = `__linkvertise__${integration.publisherId}`;
+      lvPublisherId = integration.publisherId;
+      lvApiToken = integration.antiBypassToken ?? "";
+      hasIntegration = true;
     }
   }
 
-  const session = createCheckpointSession(scriptKey, !!checkpointUrl);
+  const hasCheckpoint = !!(perScriptUrl || hasIntegration);
+  const session = createCheckpointSession(scriptKey, hasCheckpoint);
   const verifyUrl = `${origin}/api/getkey/verify?session=${session}&scriptKey=${encodeURIComponent(scriptKey)}`;
 
-  if (!checkpointUrl) {
+  if (!hasCheckpoint) {
     // Dev mode — no checkpoint configured, go straight to verify
     res.redirect(302, verifyUrl);
     return;
   }
 
   // Build the full checkpoint redirect URL
-  let checkpointHref: string;
-  if (checkpointUrl.startsWith("__linkvertise__")) {
-    const publisherId = checkpointUrl.replace("__linkvertise__", "");
-    checkpointHref = `https://linkvertise.com/api/url/${encodeURIComponent(publisherId)}?url=${encodeURIComponent(verifyUrl)}`;
-  } else if (checkpointUrl.includes("{url}")) {
-    checkpointHref = checkpointUrl.replace("{url}", encodeURIComponent(verifyUrl));
+  let checkpointHref = "";
+
+  if (perScriptUrl) {
+    // Manual per-script URL (supports {url} placeholder or append)
+    if (perScriptUrl.includes("{url}")) {
+      checkpointHref = perScriptUrl.replace("{url}", encodeURIComponent(verifyUrl));
+    } else {
+      checkpointHref = `${perScriptUrl}${Buffer.from(verifyUrl).toString("base64")}`;
+    }
   } else {
-    const encoded = Buffer.from(verifyUrl).toString("base64url");
-    checkpointHref = `${checkpointUrl}${encoded}`;
+    // Global Linkvertise integration
+
+    // Attempt 1: Use the Linkvertise Publisher API to create a real link
+    // (link appears in publisher dashboard, supports bypass protection)
+    if (lvApiToken) {
+      try {
+        const apiResp = await fetch("https://publisher.linkvertise.com/api/v1/link", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${lvApiToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url: verifyUrl, title: `${displayName} — Key System` }),
+          signal: AbortSignal.timeout(5000),
+        });
+        if (apiResp.ok) {
+          const apiData = await apiResp.json() as Record<string, unknown>;
+          const dataObj = apiData.data as Record<string, unknown> | undefined;
+          checkpointHref = (dataObj?.url as string | undefined) ?? (apiData.url as string | undefined) ?? "";
+        }
+      } catch {
+        // fall through to static link
+      }
+    }
+
+    // Attempt 2: Static link with standard base64 encoding (Luarmor-style)
+    // Linkvertise decodes the `url` param as plain base64, NOT percent-encoded
+    if (!checkpointHref) {
+      const encoded = Buffer.from(verifyUrl).toString("base64");
+      checkpointHref = `https://linkvertise.com/api/url/${lvPublisherId}?url=${encoded}`;
+    }
   }
 
   // Show the checkpoint landing page
