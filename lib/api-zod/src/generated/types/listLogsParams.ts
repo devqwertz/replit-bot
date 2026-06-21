@@ -5,7 +5,9 @@
  * LuauHub API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListLogsStatus } from './listLogsStatus';
 
-export interface HealthStatus {
-  status: string;
-}
+export type ListLogsParams = {
+status?: ListLogsStatus;
+limit?: number;
+};

@@ -88,6 +88,7 @@ function mapScript(s: typeof scriptsTable.$inferSelect) {
     obfuscatedCode: s.obfuscatedCode ?? null,
     scriptKey: s.scriptKey ?? null,
     service: s.service ?? null,
+    provider: s.provider ?? null,
     status: s.status,
     obfuscationStatus: s.obfuscationStatus,
     executions: s.executions,
@@ -139,6 +140,7 @@ router.post("/scripts", requireAuth, async (req, res): Promise<void> => {
       description: parsed.data.description ?? null,
       code: parsed.data.code ?? null,
       service: parsed.data.service ?? null,
+      provider: parsed.data.provider ?? null,
       webhookUrl: (parsed.data as any).webhookUrl ?? null,
       webhookLogsEnabled: (parsed.data as any).webhookLogsEnabled ?? false,
       obfuscationStatus: "pending",
@@ -215,6 +217,7 @@ router.patch("/scripts/:id", requireAuth, async (req, res): Promise<void> => {
     updateData.obfuscatedCode = null;
   }
   if (body.data.service !== undefined) updateData.service = body.data.service;
+  if (body.data.provider !== undefined) updateData.provider = body.data.provider;
   if (body.data.status !== undefined) updateData.status = body.data.status;
 
   const [script] = await db

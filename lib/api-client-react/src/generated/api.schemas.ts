@@ -40,6 +40,8 @@ export interface Script {
   scriptKey?: string | null;
   /** @nullable */
   service?: string | null;
+  /** @nullable */
+  provider?: string | null;
   status: ScriptStatus;
   obfuscationStatus: ScriptObfuscationStatus;
   executions: number;
@@ -55,6 +57,7 @@ export interface ScriptInput {
   description?: string;
   code?: string;
   service?: string;
+  provider?: string;
 }
 
 export type ScriptUpdateStatus = typeof ScriptUpdateStatus[keyof typeof ScriptUpdateStatus];
@@ -71,6 +74,7 @@ export interface ScriptUpdate {
   description?: string;
   code?: string;
   service?: string;
+  provider?: string;
   status?: ScriptUpdateStatus;
 }
 

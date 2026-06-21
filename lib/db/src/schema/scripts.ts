@@ -11,6 +11,7 @@ export const scriptsTable = pgTable("scripts", {
   obfuscatedCode: text("obfuscated_code"),
   scriptKey: text("script_key"),
   service: text("service"),
+  provider: text("provider"),
   status: text("status").notNull().default("active"),
   obfuscationStatus: text("obfuscation_status").notNull().default("pending"),
   executions: integer("executions").notNull().default(0),

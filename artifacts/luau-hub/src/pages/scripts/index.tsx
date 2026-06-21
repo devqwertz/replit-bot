@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useServices } from "@/hooks/use-services";
+import { useProviders } from "@/hooks/use-providers";
 import React from "react";
 
 export default function Scripts() {
@@ -279,10 +280,49 @@ function ServiceSelector({ value, onChange }: { value: string; onChange: (v: str
   );
 }
 
+function ProviderSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { providers } = useProviders();
+  const selected = providers.find((p) => p.name === value);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-white/10 bg-black/50 text-sm text-left hover:border-white/20 transition-colors focus:outline-none focus:ring-1 focus:ring-primary/40"
+        >
+          {selected ? (
+            <span className="font-mono truncate">{selected.name}</span>
+          ) : (
+            <span className="text-muted-foreground">Select a provider…</span>
+          )}
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[180px]" align="start">
+        <DropdownMenuItem onClick={() => onChange("")} className={!value ? "bg-primary/10 text-primary" : ""}>
+          <span className="text-muted-foreground italic">None</span>
+        </DropdownMenuItem>
+        {providers.length > 0 && <DropdownMenuSeparator />}
+        {providers.map((p) => (
+          <DropdownMenuItem
+            key={p.id}
+            onClick={() => onChange(p.name)}
+            className={value === p.name ? "bg-primary/10 text-primary" : ""}
+          >
+            {p.name}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function CreateScriptDialog() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [service, setService] = useState("");
+  const [provider, setProvider] = useState("");
   const [desc, setDesc] = useState("");
   const [code, setCode] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -296,7 +336,7 @@ function CreateScriptDialog() {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getListScriptsQueryKey() });
         setOpen(false);
-        setName(""); setService(""); setDesc(""); setCode("");
+        setName(""); setService(""); setProvider(""); setDesc(""); setCode("");
         setWebhookUrl(""); setWebhookLogsEnabled(false);
         if (code && data.obfuscationStatus === "complete") {
           toast({ title: "Script protected & ready", description: "Log collector injected automatically — your loadstring is ready." });
@@ -316,6 +356,7 @@ function CreateScriptDialog() {
       data: {
         name,
         service: service || undefined,
+        provider: provider || undefined,
         description: desc || undefined,
         code: code || undefined,
         ...(webhookUrl ? { webhookUrl, webhookLogsEnabled } : {}),
@@ -356,6 +397,10 @@ function CreateScriptDialog() {
                 <Label>Service</Label>
                 <ServiceSelector value={service} onChange={setService} />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Provider</Label>
+              <ProviderSelector value={provider} onChange={setProvider} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="desc">Description</Label>

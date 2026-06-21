@@ -8,11 +8,18 @@
 import * as zod from 'zod';
 
 
+/**
+ * Returns server health status
+ * @summary Health check
+ */
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
 
 
+/**
+ * @summary List all scripts
+ */
 export const ListScriptsQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
   "status": zod.enum(['active', 'inactive']).optional()
@@ -26,17 +33,22 @@ export const ListScriptsResponseItem = zod.object({
   "obfuscatedCode": zod.string().nullish(),
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
+  "provider": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
   "successCount": zod.number(),
   "failureCount": zod.number(),
-  "webhookUrl": zod.string().nullish(),
-  "webhookLogsEnabled": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
 export const ListScriptsResponse = zod.array(ListScriptsResponseItem)
+
+
+/**
+ * @summary Create a new script
+ */
+
 
 
 export const CreateScriptBody = zod.object({
@@ -44,11 +56,13 @@ export const CreateScriptBody = zod.object({
   "description": zod.string().optional(),
   "code": zod.string().optional(),
   "service": zod.string().optional(),
-  "webhookUrl": zod.string().optional(),
-  "webhookLogsEnabled": zod.boolean().optional()
+  "provider": zod.string().optional()
 })
 
 
+/**
+ * @summary Get a script by ID
+ */
 export const GetScriptParams = zod.object({
   "id": zod.coerce.number()
 })
@@ -61,30 +75,34 @@ export const GetScriptResponse = zod.object({
   "obfuscatedCode": zod.string().nullish(),
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
+  "provider": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
   "successCount": zod.number(),
   "failureCount": zod.number(),
-  "webhookUrl": zod.string().nullish(),
-  "webhookLogsEnabled": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
 
 
+/**
+ * @summary Update a script
+ */
 export const UpdateScriptParams = zod.object({
   "id": zod.coerce.number()
 })
+
+
+
 
 export const UpdateScriptBody = zod.object({
   "name": zod.string().min(1).optional(),
   "description": zod.string().optional(),
   "code": zod.string().optional(),
   "service": zod.string().optional(),
-  "status": zod.enum(['active', 'inactive']).optional(),
-  "webhookUrl": zod.string().optional(),
-  "webhookLogsEnabled": zod.boolean().optional()
+  "provider": zod.string().optional(),
+  "status": zod.enum(['active', 'inactive']).optional()
 })
 
 export const UpdateScriptResponse = zod.object({
@@ -95,23 +113,28 @@ export const UpdateScriptResponse = zod.object({
   "obfuscatedCode": zod.string().nullish(),
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
+  "provider": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
   "successCount": zod.number(),
   "failureCount": zod.number(),
-  "webhookUrl": zod.string().nullish(),
-  "webhookLogsEnabled": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
 
 
+/**
+ * @summary Delete a script
+ */
 export const DeleteScriptParams = zod.object({
   "id": zod.coerce.number()
 })
 
 
+/**
+ * @summary Trigger obfuscation for a script
+ */
 export const ObfuscateScriptParams = zod.object({
   "id": zod.coerce.number()
 })
@@ -124,6 +147,7 @@ export const ObfuscateScriptResponse = zod.object({
   "obfuscatedCode": zod.string().nullish(),
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
+  "provider": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
@@ -134,6 +158,9 @@ export const ObfuscateScriptResponse = zod.object({
 })
 
 
+/**
+ * @summary Toggle script active/inactive status
+ */
 export const ToggleScriptParams = zod.object({
   "id": zod.coerce.number()
 })
@@ -146,6 +173,7 @@ export const ToggleScriptResponse = zod.object({
   "obfuscatedCode": zod.string().nullish(),
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
+  "provider": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
@@ -156,6 +184,9 @@ export const ToggleScriptResponse = zod.object({
 })
 
 
+/**
+ * @summary Get execution logs for a script
+ */
 export const GetScriptLogsParams = zod.object({
   "id": zod.coerce.number()
 })
@@ -172,13 +203,14 @@ export const GetScriptLogsResponseItem = zod.object({
   "robloxThumbnailUrl": zod.string().nullish(),
   "robloxExecutor": zod.string().nullish(),
   "duration": zod.number().nullish(),
-  "country": zod.string().nullish(),
-  "countryCode": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const GetScriptLogsResponse = zod.array(GetScriptLogsResponseItem)
 
 
+/**
+ * @summary List all execution logs
+ */
 export const ListLogsQueryParams = zod.object({
   "status": zod.enum(['success', 'failed']).optional(),
   "limit": zod.coerce.number().optional()
@@ -196,13 +228,14 @@ export const ListLogsResponseItem = zod.object({
   "robloxThumbnailUrl": zod.string().nullish(),
   "robloxExecutor": zod.string().nullish(),
   "duration": zod.number().nullish(),
-  "country": zod.string().nullish(),
-  "countryCode": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListLogsResponse = zod.array(ListLogsResponseItem)
 
 
+/**
+ * @summary Record a script execution
+ */
 export const RecordExecutionBody = zod.object({
   "scriptId": zod.number(),
   "status": zod.enum(['success', 'failed']),
@@ -211,6 +244,9 @@ export const RecordExecutionBody = zod.object({
 })
 
 
+/**
+ * @summary Get analytics overview stats
+ */
 export const GetAnalyticsOverviewResponse = zod.object({
   "totalScripts": zod.number(),
   "totalExecutions": zod.number(),
@@ -221,6 +257,9 @@ export const GetAnalyticsOverviewResponse = zod.object({
 })
 
 
+/**
+ * @summary Get execution chart data (timeseries, last 30 days)
+ */
 export const GetExecutionChartResponseItem = zod.object({
   "date": zod.string(),
   "executions": zod.number(),
@@ -230,18 +269,29 @@ export const GetExecutionChartResponseItem = zod.object({
 export const GetExecutionChartResponse = zod.array(GetExecutionChartResponseItem)
 
 
+/**
+ * @summary Get recent execution activity across all scripts
+ */
 export const GetRecentActivityResponseItem = zod.object({
   "id": zod.number(),
   "scriptId": zod.number(),
   "scriptName": zod.string(),
   "status": zod.enum(['success', 'failed']),
   "executorId": zod.string(),
+  "robloxUsername": zod.string().nullish(),
+  "robloxUserId": zod.string().nullish(),
+  "robloxClientId": zod.string().nullish(),
+  "robloxThumbnailUrl": zod.string().nullish(),
+  "robloxExecutor": zod.string().nullish(),
   "duration": zod.number().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const GetRecentActivityResponse = zod.array(GetRecentActivityResponseItem)
 
 
+/**
+ * @summary Get top scripts by execution count
+ */
 export const GetTopScriptsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -250,6 +300,7 @@ export const GetTopScriptsResponseItem = zod.object({
   "obfuscatedCode": zod.string().nullish(),
   "scriptKey": zod.string().nullish(),
   "service": zod.string().nullish(),
+  "provider": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "obfuscationStatus": zod.enum(['pending', 'processing', 'complete', 'failed']),
   "executions": zod.number(),
@@ -261,20 +312,3 @@ export const GetTopScriptsResponseItem = zod.object({
 export const GetTopScriptsResponse = zod.array(GetTopScriptsResponseItem)
 
 
-export const GetTopExecutorsResponseItem = zod.object({
-  "executorId": zod.string(),
-  "robloxUsername": zod.string().nullish(),
-  "robloxClientId": zod.string().nullish(),
-  "robloxThumbnailUrl": zod.string().nullish(),
-  "executions": zod.number(),
-  "successCount": zod.number()
-})
-export const GetTopExecutorsResponse = zod.array(GetTopExecutorsResponseItem)
-
-
-export const GetTopCountriesResponseItem = zod.object({
-  "country": zod.string(),
-  "countryCode": zod.string(),
-  "executions": zod.number()
-})
-export const GetTopCountriesResponse = zod.array(GetTopCountriesResponseItem)
